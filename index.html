@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhan PRO - Trading App & Bot</title>
+    <style>
+        :root {
+            --bg-body: #0e1217;
+            --bg-card: #161b22;
+            --bg-sidebar: #12161f;
+            --border-color: #21262d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent-green: #00d09c;
+            --accent-red: #eb5757;
+            --accent-blue: #2f80ed;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        .header { background-color: var(--bg-card); border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .ticker-bar { display: flex; gap: 25px; padding: 6px 20px; font-size: 12px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.2); }
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; }
+        .logo { font-size: 20px; font-weight: 800; color: var(--accent-green); }
+        .badge-paper { background: rgba(0, 208, 156, 0.15); color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 220px; background: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 15px 0; }
+        .sidebar-menu { list-style: none; }
+        .sidebar-item { padding: 12px 20px; font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .sidebar-item:hover, .sidebar-item.active { background: rgba(0, 208, 156, 0.1); color: var(--text-primary); border-left: 3px solid var(--accent-green); }
+
+        .content-area { flex: 1; padding: 15px; overflow-y: auto; }
+        .tab-window { display: none; height: 100%; }
+        .tab-window.active { display: block; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 340px 1fr; gap: 15px; height: 100%; }
+        
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
+        .search-box input { width: 100%; padding: 10px; background: var(--bg-body); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; outline: none; margin-bottom: 10px; font-size: 12px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--text-secondary); font-size: 11px; }
+        tr.clickable { cursor: pointer; }
+        tr.clickable:hover { background: rgba(255,255,255,0.03); }
+
+        .up { color: var(--accent-green); }
+        .down { color: var(--accent-red); }
+
+        .btn-sm { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .btn-buy { background: var(--accent-green); color: #000; }
+        .btn-sell { background: var(--accent-red); color: #fff; }
+
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; }
+        .metric-box { background: var(--bg-body); border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; }
+        .metric-box label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+        .metric-box span { font-weight: bold; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="ticker-bar">
+            <div>NIFTY 50 <strong>23,873.45</strong> <span class="down">-41.00 (-0.17%)</span></div>
+            <div>BANK NIFTY <strong>57,380.60</strong> <span class="up">+208.60 (+0.36%)</span></div>
+            <div>SENSEX <strong>80,120.40</strong> <span class="up">+0.42%</span></div>
+        </div>
+        <div class="navbar">
+            <div class="logo">Dhan PRO</div>
+            <div class="badge-paper">● PAPER TRADING MODE ACTIVE</div>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="sidebar">
+            <ul class="sidebar-menu">
+                <li class="sidebar-item active" onclick="switchTab(this, 'tab-watchlist')">📊 Trade Workspace</li>
+                <li class="sidebar-item" onclick="switchTab(this, 'tab-optionchain')">⛓️ Option Chain</li>
+                <li class="sidebar-item" onclick="switchTab(this, 'tab-portfolio')">💼 Portfolio & Orders</li>
+                <li class="sidebar-item" onclick="switchTab(this, 'tab-bot')" style="color: var(--accent-green); font-weight: bold;">🤖 AUTO BOT CONSOLE</li>
+                <li class="sidebar-item" onclick="switchTab(this, 'tab-backtest')">📈 Backtesting Engine</li>
+            </ul>
+        </div>
+
+        <div class="content-area">
+            <div id="tab-watchlist" class="tab-window active">
+                <div class="dashboard-grid">
+                    
+                    <div class="card">
+                        <h3>Watchlist</h3>
+                        <div class="search-box" style="margin-top:10px;">
+                            <input type="text" id="searchInput" onkeyup="handleSearch(event)" placeholder="Type & Press Enter (e.g. SBIN)">
+                        </div>
+                        <div style="overflow-y:auto; flex:1;">
+                            <table>
+                                <thead>
+                                    <tr><th>Symbol</th><th>Action</th></tr>
+                                </thead>
+                                <tbody id="watchlistTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px;">
+                            <div>
+                                <h1 id="dispStockName" style="font-size:28px;">RELIANCE</h1>
+                                <span style="font-size:12px; color:var(--text-secondary);">NSE Equity Segment</span>
+                            </div>
+                            <div style="text-align:right;">
+                                <h1 id="dispStockLtp" style="font-size:32px;">Loading...</h1>
+                                <span id="dispStockChg" class="up" style="font-size:14px; font-weight:bold;">--</span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button class="btn-sm btn-buy" style="flex:1; padding:12px;">BUY</button>
+                            <button class="btn-sm btn-sell" style="flex:1; padding:12px;">SELL</button>
+                        </div>
+
+                        <div class="metrics-grid">
+                            <div class="metric-box"><label>Total Volume</label><span id="dispVol">--</span></div>
+                            <div class="metric-box"><label>Day High</label><span id="dispHigh" class="up">--</span></div>
+                            <div class="metric-box"><label>Day Low</label><span id="dispLow" class="down">--</span></div>
+                            <div class="metric-box"><label>VWAP Price</label><span id="dispVwap">--</span></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="tab-optionchain" class="tab-window">
+                <div class="card">
+                    <h3>Option Chain Analysis</h3>
+                </div>
+            </div>
+
+            <div id="tab-portfolio" class="tab-window">
+                <div class="card">
+                    <h3>Portfolio & Open Positions</h3>
+                </div>
+            </div>
+
+            <div id="tab-bot" class="tab-window">
+                <div class="card">
+                    <h3>🤖 Dhan Live Algo Execution Engine</h3>
+                </div>
+            </div>
+
+            <div id="tab-backtest" class="tab-window">
+                <div class="card">
+                    <h3>📈 Strategy Backtesting Simulator</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSymbol = "RELIANCE";
+        let stockList = ["RELIANCE", "TATAMOTORS", "HDFCBANK", "SBIN", "ASHOKLEY"];
+
+        async function fetchLivePrice(symbol) {
+            try {
+                const res = await fetch(`http://127.0.0.1:5000/api/stock/${symbol}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('dispStockName').innerText = data.name;
+                    document.getElementById('dispStockLtp').innerText = `₹${data.ltp}`;
+                    
+                    const chgEl = document.getElementById('dispStockChg');
+                    chgEl.innerText = data.chg;
+                    chgEl.className = data.isUp ? 'up' : 'down';
+
+                    document.getElementById('dispVol').innerText = data.vol;
+                    document.getElementById('dispHigh').innerText = data.high;
+                    document.getElementById('dispLow').innerText = data.low;
+                    document.getElementById('dispVwap').innerText = data.vwap;
+                }
+            } catch (err) {
+                console.log("Ensure 'python app.py' is running in VS Code terminal.");
+            }
+        }
+
+        function renderWatchlist() {
+            const tbody = document.getElementById('watchlistTable');
+            tbody.innerHTML = '';
+            stockList.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'clickable';
+                tr.onclick = () => selectStock(s);
+                tr.innerHTML = `
+                    <td><strong>${s}</strong></td>
+                    <td><button class="btn-sm btn-buy">Select</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function selectStock(symbol) {
+            currentSymbol = symbol;
+            fetchLivePrice(symbol);
+        }
+
+        function handleSearch(event) {
+            const query = document.getElementById('searchInput').value.toUpperCase().trim();
+            if (event.key === 'Enter' && query) {
+                if (!stockList.includes(query)) {
+                    stockList.unshift(query);
+                    renderWatchlist();
+                }
+                selectStock(query);
+            }
+        }
+
+        function switchTab(el, tabId) {
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.tab-window').forEach(w => w.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        setInterval(() => {
+            if (currentSymbol) fetchLivePrice(currentSymbol);
+        }, 3000);
+
+        window.onload = () => {
+            renderWatchlist();
+            selectStock("RELIANCE");
+        };
+    </script>
+</body>
+</html>
