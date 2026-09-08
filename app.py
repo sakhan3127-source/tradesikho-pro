@@ -1,59 +1,40 @@
-import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 import yfinance as yf
+import requests
 
 app = Flask(__name__)
-# Enable CORS for all domains so your mobile/web client can access it
 CORS(app)
 
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({
-        "status": "Online",
-        "message": "Dhan Bot API Server is Running Live!"
-    })
-
-@app.route('/api/stock/<symbol>', methods=['GET'])
+@app.route('/api/stock/<string:symbol>', methods=['GET'])
 def get_stock_data(symbol):
     try:
-        formatted_symbol = f"{symbol.upper().strip()}.NS"
-        ticker = yf.Ticker(formatted_symbol)
+        # Custom session banayein taaki Rate Limit na aaye
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, impervious) Chrome/120.0.0.0 Safari/537.36'
+        })
         
-        # 1-day minute candles fetch
-        df = ticker.history(period="1d", interval="1m")
-        if df.empty:
-            df = ticker.history(period="5d", interval="1d")
-            
-        if df.empty:
-            return jsonify({"error": "Stock symbol not found"}), 404
+        ticker = yf.Ticker(symbol, session=session)
+        
+        # 1-day fast period fetch
+        data = ticker.history(period="1d")
+        
+        if data.empty:
+            # Fallback agar history empty aaye
+            data = ticker.history(period="5d")
+            if data.empty:
+                return jsonify({"error": "Data fetch nahi ho pa raha"}), 404
 
-        latest = df.iloc[-1]
-        price = round(float(latest['Close']), 2)
-        high = round(float(latest['High']), 2)
-        low = round(float(latest['Low']), 2)
-        volume = int(latest['Volume'])
-        
-        prev_close = ticker.info.get('previousClose', price)
-        chg_val = round(price - prev_close, 2)
-        chg_pct = round((chg_val / prev_close) * 100, 2) if prev_close else 0.0
-        is_up = chg_val >= 0
+        current_price = float(data['Close'].iloc[-1])
+        open_price = float(data['Open'].iloc[-1])
+        change = current_price - open_price
 
         return jsonify({
-            "name": symbol.upper(),
-            "ex": "NSE",
-            "ltp": f"{price:,.2f}",
-            "chg": f"{'+' if is_up else ''}₹{chg_val} ({'+' if is_up else ''}{chg_pct}%)",
-            "isUp": is_up,
-            "vol": f"{volume:,}",
-            "high": f"₹{high:,.2f}",
-            "low": f"₹{low:,.2f}",
-            "vwap": f"₹{price:,.2f}"
+            "symbol": symbol,
+            "price": round(current_price, 2),
+            "change": round(change, 2)
         })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    # Cloud environments use dynamic PORT
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
