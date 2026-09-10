@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeSikho Pro - Live</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>body{background:#0b0e11;color:#e6e8ea;font-family:Inter}.mono{font-family:JetBrains Mono}</style>
+</head>
+<body class="h-screen flex flex-col">
+<div id="loginScreen" class="fixed inset-0 bg-[#0b0e11] z-[100] flex items-center justify-center p-4">
+<div class="bg-[#151a21] border border-[#1f2633] rounded-2xl p-6 w-full max-w-[360px]">
+<div class="text-center mb-6"><div class="text-[22px] font-bold">Trade<span class="text-[#00c087]">Sikho</span> Pro</div><div class="text-[11px] text-[#8b8f9a] mt-1">Real NSE + Cloud Portfolio</div></div>
+<input id="email" type="email" placeholder="Email" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg px-3 py-3 text-[13px] mb-3 outline-none focus:border-[#00c087]">
+<input id="password" type="password" placeholder="Password (min 6)" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg px-3 py-3 text-[13px] mb-4 outline-none focus:border-[#00c087]">
+<button id="loginBtn" class="w-full bg-[#00c087] text-black font-bold py-3 rounded-xl">Login / Signup</button>
+<div class="text-[11px] text-[#8b8f9a] text-center mt-3">Pehli baar? Same button se account ban jayega<br>Balance cloud pe save hoga</div>
+<div id="loginMsg" class="text-[11px] text-center mt-2 text-[#ff4458]"></div>
+</div>
+</div>
+<header class="h-[52px] bg-[#151a21] border-b border-[#1f2633] flex items-center justify-between px-3">
+<div class="font-bold text-[14px]">Trade<span class="text-[#00c087]">Sikho</span> <span id="userEmail" class="text-[10px] text-[#8b8f9a] ml-2"></span></div>
+<div class="flex gap-2 items-center"><div id="balanceDisplay" class="bg-[#1e252f] px-3 py-1.5 rounded-lg text-[12px] mono">₹--</div><button id="logoutBtn" class="text-[10px] bg-[#ff4458]/20 text-[#ff4458] px-2 py-1 rounded">Logout</button></div>
+</header>
+<div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+<aside class="w-full md:w-[360px] bg-[#151a21] border-r border-[#1f2633] flex flex-col">
+<div class="p-3"><input id="search" placeholder="Search NSE..." class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg px-3 py-2.5 text-[13px] outline-none"><div class="text-[10px] text-[#8b8f9a] mt-2"><span id="stockCount">0</span> NSE Live • Cloud Sync ON ☁️</div></div>
+<div id="watchlist" class="flex-1 overflow-y-auto"></div>
+</aside>
+<main class="flex-1 flex flex-col bg-[#0b0e11]">
+<div class="bg-[#151a21] p-3 border-b border-[#1f2633] flex justify-between"><div><h2 id="selectedName" class="font-bold text-[14px]">--</h2><span id="selectedSym" class="text-[11px] bg-[#1e252f] px-2 py-0.5 rounded">--</span> <span id="selectedPrice" class="mono font-bold">--</span></div><div class="text-[11px] mono">P&L: <span id="totalPnL" class="font-bold text-[#00c087]">₹0</span></div></div>
+<div class="flex-1 p-2"><canvas id="chart" class="w-full h-full bg-[#151a21] rounded-xl"></canvas></div>
+<div class="h-[160px] bg-[#151a21] border-t border-[#1f2633] p-2 overflow-auto"><div id="positionsTable"></div></div>
+</main>
+<aside class="w-full md:w-[300px] bg-[#151a21] border-l border-[#1f2633] p-3">
+<div class="flex bg-[#0b0e11] rounded-lg p-1 mb-3"><button id="buyTab" class="flex-1 py-2.5 rounded bg-[#00c087] text-black font-bold text-[13px]">BUY</button><button id="sellTab" class="flex-1 py-2.5 rounded text-[#8b8f9a] text-[13px]">SELL</button></div>
+<div class="flex bg-[#0b0e11] border border-[#2a3241] rounded-lg mb-3"><button onclick="adjQty(-1)" class="px-4 py-3">-</button><input id="qty" value="1" class="flex-1 bg-transparent text-center mono"><button onclick="adjQty(1)" class="px-4 py-3">+</button></div>
+<div class="bg-[#1e252f] p-2 rounded text-[11px] mb-3"><div class="flex justify-between"><span>Price</span><span id="priceBox" class="mono">--</span></div><div class="flex justify-between"><span>Required</span><span id="reqMargin" class="mono">--</span></div></div>
+<button id="placeOrder" class="w-full py-3 rounded-xl bg-[#00c087] text-black font-bold">BUY</button>
+<div id="syncStatus" class="text-[10px] text-[#8b8f9a] mt-2 text-center">● Cloud Sync: Ready</div>
+</aside>
+</div>
+<script>
+const BACKEND = 'https://dhan-bot-backend.onrender.com';
+const SUPABASE_URL = 'https://dgtcjgemvddkkzikyrfb.supabase.co';
+// YAHAN APNI ANON KEY (eyJ se start wali chhoti wali) DALO
+const SUPABASE_KEY =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndGNqZ2VtdmRka2t6aWt5cmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNTMwNDMsImV4cCI6MjEwNDYyOTA0M30.FrLHJZ_1Q353wVD9XiGJ9T93CuU_3m3ox4wray5KPi0
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let user=null, stocks=[], selected=null, balance=1000000, holdings={}, orders=[], isBuy=true;
+async function checkUser(){
+  const { data } = await supabaseClient.auth.getSession();
+  if(data.session){ user=data.session.user; showApp(); } else { document.getElementById('loginScreen').classList.remove('hidden'); }
+}
+document.getElementById('loginBtn').onclick = async ()=>{
+  const email=document.getElementById('email').value, password=document.getElementById('password').value;
+  if(!email || password.length<6){ document.getElementById('loginMsg').innerText='Email + 6 digit password dalo'; return; }
+  document.getElementById('loginMsg').innerText='Loading...';
+  let { data, error } = await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){
+    const { data: sData, error: sError } = await supabaseClient.auth.signUp({email,password});
+    if(sError){ document.getElementById('loginMsg').innerText=sError.message; return; }
+    data=sData;
+  }
+  user=data.user || data.session?.user;
+  if(user) showApp();
+};
+document.getElementById('logoutBtn').onclick = async ()=>{ await supabaseClient.auth.signOut(); location.reload(); };
+async function showApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('userEmail').innerText=user.email;
+  await loadPortfolio();
+  await loadNifty50();
+}
+async function loadPortfolio(){
+  document.getElementById('syncStatus').innerText='● Cloud Sync: Loading...';
+  try{
+    const { data, error } = await supabaseClient.from('portfolios').select('*').eq('user_id', user.id).single();
+    if(data){
+      balance = parseFloat(data.balance) || 1000000;
+      holdings = data.holdings || {};
+      orders = data.orders || [];
+      document.getElementById('syncStatus').innerText='● Cloud Sync: Loaded ☁️ '+new Date().toLocaleTimeString();
+    } else {
+      await supabaseClient.from('portfolios').insert({user_id: user.id, balance: 1000000, holdings: {}, orders: []});
+      document.getElementById('syncStatus').innerText='● Cloud Sync: New Account Created ☁️';
+    }
+    updateUI();
+  }catch(e){
+    console.log(e);
+    document.getElementById('syncStatus').innerText='● Cloud Sync: Offline';
+  }
+}
+async function savePortfolio(){
+  document.getElementById('syncStatus').innerText='● Cloud Sync: Saving...';
+  try{
+    const { error } = await supabaseClient.from('portfolios').upsert({user_id: user.id, balance, holdings, orders, updated_at: new Date().toISOString()}, {onConflict: 'user_id'});
+    if(error) throw error;
+    document.getElementById('syncStatus').innerText='● Cloud Sync: Saved ☁️ '+new Date().toLocaleTimeString();
+  }catch(e){ document.getElementById('syncStatus').innerText='● Save failed: '+e.message; }
+}
+async function loadNifty50(){
+  try{
+    const res=await fetch(BACKEND+'/api/nifty50'); const data=await res.json();
+    stocks=data.data.map(d=>({n:d.symbol,full:d.meta?.companyName||d.symbol,price:d.lastPrice,change:d.pChange}));
+    renderWatchlist(); if(stocks.length>0) selectStock(stocks[0].n);
+  }catch(e){ stocks=[{n:'RELIANCE',full:'Reliance',price:1274,change:0.5},{n:'TCS',full:'TCS',price:4150,change:-0.2},{n:'INFY',full:'Infosys',price:1620,change:0.8}]; renderWatchlist(); selectStock(stocks[0].n); }
+}
+function renderWatchlist(q=''){
+  const filtered=stocks.filter(s=>!q||s.n.includes(q.toUpperCase()));
+  document.getElementById('stockCount').innerText=filtered.length;
+  document.getElementById('watchlist').innerHTML=filtered.slice(0,80).map(s=>`<div onclick="selectStock('${s.n}')" class="flex justify-between px-3 py-2.5 border-b border-[#1f2633]/40 hover:bg-[#1e252f] cursor-pointer"><div><div class="text-[12px] font-bold">${s.n}</div><div class="text-[10px] text-[#6b7280]">${s.full.slice(0,20)}</div></div><div class="text-right"><div class="mono text-[12px]">₹${s.price.toFixed(2)}</div><div class="text-[10px] ${s.change>=0?'text-[#00c087]':'text-[#ff4458]'}">${s.change.toFixed(2)}%</div></div></div>`).join('');
+}
+async function selectStock(sym){
+  selected=stocks.find(s=>s.n===sym);
+  if(!selected) return;
+  document.getElementById('selectedName').innerText=selected.full;
+  document.getElementById('selectedSym').innerText=selected.n;
+  document.getElementById('selectedPrice').innerText='₹'+selected.price.toFixed(2);
+  document.getElementById('priceBox').innerText='₹'+selected.price.toFixed(2);
+  document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+selected.n;
+  updateReq();
+}
+function adjQty(d){const e=document.getElementById('qty'); e.value=Math.max(1,parseInt(e.value||1)+d); updateReq();}
+function updateReq(){ const qty=parseInt(document.getElementById('qty').value)||1; document.getElementById('reqMargin').innerText='₹'+((selected?.price||0)*qty).toFixed(2); }
+document.getElementById('search').addEventListener('input',e=>renderWatchlist(e.target.value));
+document.getElementById('buyTab').onclick=function(){isBuy=true; this.className='flex-1 py-2.5 rounded bg-[#00c087] text-black font-bold text-[13px]'; document.getElementById('sellTab').className='flex-1 py-2.5 rounded text-[#8b8f9a] text-[13px]'; document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+(selected?.n||''); document.getElementById('placeOrder').className='w-full py-3 rounded-xl bg-[#00c087] text-black font-bold';};
+document.getElementById('sellTab').onclick=function(){isBuy=false; this.className='flex-1 py-2.5 rounded bg-[#ff4458] text-white font-bold text-[13px]'; document.getElementById('buyTab').className='flex-1 py-2.5 rounded text-[#8b8f9a] text-[13px]'; document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+(selected?.n||''); document.getElementById('placeOrder').className='w-full py-3 rounded-xl bg-[#ff4458] text-white font-bold';};
+document.getElementById('placeOrder').onclick=async function(){
+  if(!selected) return;
+  const qty=parseInt(document.getElementById('qty').value)||1; const price=selected.price; const cost=qty*price;
+  if(isBuy){ if(cost>balance){alert('Balance kam hai');return;} balance-=cost; holdings[selected.n]=holdings[selected.n]||{qty:0,avg:0}; const h=holdings[selected.n]; h.avg=(h.avg*h.qty+cost)/(h.qty+qty); h.qty+=qty; }
+  else{ const h=holdings[selected.n]; if(!h||h.qty<qty){alert('Holding nahi hai');return;} balance+=cost; h.qty-=qty; if(h.qty===0) delete holdings[selected.n]; }
+  orders.unshift({sym:selected.n,qty,price,type:isBuy?'BUY':'SELL',time:new Date().toLocaleTimeString()});
+  updateUI(); await savePortfolio();
+};
+function updateUI(){
+  document.getElementById('balanceDisplay').innerText='₹'+balance.toLocaleString('en-IN',{maximumFractionDigits:0});
+  let inv=0,cval=0, html='';
+  Object.entries(holdings).forEach(([sym,h])=>{
+    const live=stocks.find(s=>s.n===sym)?.price||h.avg; const cur=live*h.qty; const invd=h.avg*h.qty; inv+=invd; cval+=cur;
+    html+=`<div class="flex justify-between bg-[#1e252f] p-2 rounded text-[12px] mb-1"><div><b>${sym}</b> ${h.qty} @ ₹${h.avg.toFixed(2)}</div><div class="text-[#00c087]">₹${(cur-invd).toFixed(2)}</div></div>`;
+  });
+  document.getElementById('positionsTable').innerHTML=html||'<div class="text-center text-[#5a5f6d] text-[12px]">No positions - Buy karo, cloud pe save hoga</div>';
+  document.getElementById('totalPnL').innerText='₹'+(cval-inv).toFixed(2);
+}
+checkUser();
+</script>
+</body>
+</html>
