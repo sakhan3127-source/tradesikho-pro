@@ -45,7 +45,7 @@
 const BACKEND = 'https://dhan-bot-backend.onrender.com';
 const SUPABASE_URL = 'https://dgtcjgemvddkkzikyrfb.supabase.co';
 // YAHAN APNI ANON KEY (eyJ se start wali chhoti wali) DALO
-const SUPABASE_KEY =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndGNqZ2VtdmRka2t6aWt5cmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNTMwNDMsImV4cCI6MjEwNDYyOTA0M30.FrLHJZ_1Q353wVD9XiGJ9T93CuU_3m3ox4wray5KPi0
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndGNqZ2VtdmRka2t6aWt5cmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNTMwNDMsImV4cCI6MjEwNDYyOTA0M30.FrLHJZ_1Q353wVD9XiGJ9T93CuU_3m3ox4wray5KPi0'
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let user=null, stocks=[], selected=null, balance=1000000, holdings={}, orders=[], isBuy=true;
 async function checkUser(){
