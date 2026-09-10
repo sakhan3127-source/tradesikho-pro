@@ -3,313 +3,148 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TradeSikho Pro - Real NSE BSE Paper Trading</title>
+<title>TradeSikho Pro - Live</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<style>
-body{font-family:'Inter',sans-serif;background:#0b0e11;color:#e6e8ea}
-.mono{font-family:'JetBrains Mono',monospace}
-.scrollbar::-webkit-scrollbar{width:4px;height:4px} .scrollbar::-webkit-scrollbar-thumb{background:#2a2e39;border-radius:10px}
-.flash-green{animation:fg .5s} @keyframes fg{0%{background:rgba(0,255,136,.35)}100%{background:transparent}}
-.flash-red{animation:fr .5s} @keyframes fr{0%{background:rgba(255,68,68,.35)}100%{background:transparent}}
-</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>body{background:#0b0e11;color:#e6e8ea;font-family:Inter}.mono{font-family:JetBrains Mono}</style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
-<header class="h-[52px] bg-[#151a21] border-b border-[#1f2633] flex items-center justify-between px-4 shrink-0">
-<div class="flex items-center gap-6">
-<div class="font-bold text-[18px]"><span class="text-white">Trade</span><span class="text-[#00c087]">Sikho</span><span class="text-[10px] bg-[#00c087] text-black px-1.5 py-0.5 rounded ml-2">PRO LIVE</span><span id="liveDot" class="ml-2 text-[10px] text-[#00c087]">● LIVE NSE</span></div>
-<div class="flex items-center gap-5 text-[12px] mono">
-<div><span class="text-[#8b8f9a]">NIFTY</span> <span id="nifty" class="text-white ml-1">--</span> <span id="niftyCh" class="ml-1">--</span></div>
-<div><span class="text-[#8b8f9a]">SENSEX</span> <span id="sensex" class="text-white ml-1">--</span> <span id="sensexCh" class="ml-1">--</span></div>
-<div class="hidden md:block"><span class="text-[#8b8f9a]">BANKNIFTY</span> <span id="bank" class="text-white ml-1">--</span> <span id="bankCh" class="ml-1">--</span></div>
+<body class="h-screen flex flex-col">
+<div id="loginScreen" class="fixed inset-0 bg-[#0b0e11] z-[100] flex items-center justify-center p-4">
+<div class="bg-[#151a21] border border-[#1f2633] rounded-2xl p-6 w-full max-w-[360px]">
+<div class="text-center mb-6"><div class="text-[22px] font-bold">Trade<span class="text-[#00c087]">Sikho</span> Pro</div><div class="text-[11px] text-[#8b8f9a] mt-1">Real NSE + Cloud Portfolio</div></div>
+<input id="email" type="email" placeholder="Email" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg px-3 py-3 text-[13px] mb-3 outline-none focus:border-[#00c087]">
+<input id="password" type="password" placeholder="Password (min 6)" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg px-3 py-3 text-[13px] mb-4 outline-none focus:border-[#00c087]">
+<button id="loginBtn" class="w-full bg-[#00c087] text-black font-bold py-3 rounded-xl">Login / Signup</button>
+<div class="text-[11px] text-[#8b8f9a] text-center mt-3">Pehli baar? Same button se account ban jayega<br>Balance cloud pe save hoga</div>
+<div id="loginMsg" class="text-[11px] text-center mt-2 text-[#ff4458]"></div>
 </div>
 </div>
-<div class="flex items-center gap-3">
-<div class="bg-[#1e252f] border border-[#2a3241] px-3 py-1.5 rounded-lg text-[12px]"><span class="text-[#8b8f9a]">Paper Balance:</span> <span id="balanceDisplay" class="text-white font-bold ml-1 mono">₹10,00,000.00</span></div>
-</div>
+<header class="h-[52px] bg-[#151a21] border-b border-[#1f2633] flex items-center justify-between px-3">
+<div class="font-bold text-[14px]">Trade<span class="text-[#00c087]">Sikho</span> <span id="userEmail" class="text-[10px] text-[#8b8f9a] ml-2"></span></div>
+<div class="flex gap-2 items-center"><div id="balanceDisplay" class="bg-[#1e252f] px-3 py-1.5 rounded-lg text-[12px] mono">₹--</div><button id="logoutBtn" class="text-[10px] bg-[#ff4458]/20 text-[#ff4458] px-2 py-1 rounded">Logout</button></div>
 </header>
-
-<div class="flex flex-1 overflow-hidden">
-<aside class="w-[300px] bg-[#151a21] border-r border-[#1f2633] flex flex-col shrink-0">
-<div class="p-3 border-b border-[#1f2633]">
-<div class="relative"><input id="search" placeholder="Search NSE BSE (RELIANCE)" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg pl-3 pr-3 py-2 text-[13px] focus:outline-none focus:border-[#00c087]"><span id="apiStatus" class="absolute right-2 top-2 text-[9px] bg-[#1e252f] px-1.5 py-0.5 rounded text-[#8b8f9a]">REAL API</span></div>
-<div class="flex gap-1.5 mt-2.5"><button class="px-2.5 py-1 text-[11px] bg-[#00c087]/15 text-[#00c087] rounded">NSE LIVE</button><button class="px-2.5 py-1 text-[11px] bg-[#1e252f] text-[#8b8f9a] rounded">BSE</button></div>
-</div>
-<div id="watchlist" class="flex-1 overflow-y-auto scrollbar"></div>
+<div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+<aside class="w-full md:w-[360px] bg-[#151a21] border-r border-[#1f2633] flex flex-col">
+<div class="p-3"><input id="search" placeholder="Search NSE..." class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg px-3 py-2.5 text-[13px] outline-none"><div class="text-[10px] text-[#8b8f9a] mt-2"><span id="stockCount">0</span> NSE Live • Cloud Sync ON ☁️</div></div>
+<div id="watchlist" class="flex-1 overflow-y-auto"></div>
 </aside>
-
-<main class="flex-1 flex flex-col bg-[#0b0e11] overflow-hidden">
-<div class="h-[56px] bg-[#151a21] border-b border-[#1f2633] flex items-center justify-between px-4">
-<div class="flex items-center gap-4">
-<h2 id="selectedName" class="text-[16px] font-bold">RELIANCE INDUSTRIES</h2><span id="selectedSym" class="text-[12px] text-[#8b8f9a] bg-[#1e252f] px-2 py-0.5 rounded">RELIANCE - NSE</span><span id="selectedPrice" class="text-[18px] font-bold mono">--</span><span id="selectedChange" class="text-[13px] px-2 py-0.5 rounded">--</span>
-</div>
-<div class="flex gap-1 bg-[#0b0e11] p-1 rounded-lg border border-[#1f2633]"><button onclick="setTF('1D')" class="tf bg-[#2a3241] text-white px-3 py-1 rounded text-[11px]">1D</button><button onclick="setTF('1W')" class="tf px-3 py-1 rounded text-[11px] text-[#8b8f9a]">1W</button></div>
-</div>
-<div class="flex-1 relative bg-[#0b0e11] p-2"><canvas id="chart" class="w-full h-full bg-[#0b0e11] rounded-lg"></canvas><div id="depth" class="absolute top-4 right-4 w-[180px] bg-[#151a21]/90 backdrop-blur border border-[#1f2633] rounded-lg p-2 text-[10px] mono"></div></div>
-<div class="h-[240px] bg-[#151a21] border-t border-[#1f2633] flex flex-col">
-<div class="flex items-center gap-6 px-4 h-10 border-b border-[#1f2633] text-[12px] shrink-0">
-<button class="tab active text-white border-b-2 border-[#00c087] h-full" data-tab="positions">Positions (<span id="posCount">0</span>)</button>
-<button class="tab text-[#8b8f9a] h-full" data-tab="orders">Orders (<span id="orderCount">0</span>)</button>
-</div>
-<div id="positions" class="flex-1 overflow-auto scrollbar p-2">
-<div class="grid grid-cols-3 gap-3 mb-3">
-<div class="bg-[#1e252f] p-2.5 rounded-lg"><div class="text-[10px] text-[#8b8f9a]">Total Investment</div><div id="totalInv" class="mono text-[14px] font-bold mt-1">₹0</div></div>
-<div class="bg-[#1e252f] p-2.5 rounded-lg"><div class="text-[10px] text-[#8b8f9a]">Current Value</div><div id="currVal" class="mono text-[14px] font-bold mt-1">₹0</div></div>
-<div class="bg-[#1e252f] p-2.5 rounded-lg"><div class="text-[10px] text-[#8b8f9a]">Total P&L</div><div id="totalPnL" class="mono text-[14px] font-bold text-[#00c087] mt-1">+₹0</div></div>
-</div>
-<div id="positionsTable"></div>
-</div>
-<div id="orders" class="hidden flex-1 overflow-auto scrollbar p-3 text-[12px] mono"></div>
-</div>
+<main class="flex-1 flex flex-col bg-[#0b0e11]">
+<div class="bg-[#151a21] p-3 border-b border-[#1f2633] flex justify-between"><div><h2 id="selectedName" class="font-bold text-[14px]">--</h2><span id="selectedSym" class="text-[11px] bg-[#1e252f] px-2 py-0.5 rounded">--</span> <span id="selectedPrice" class="mono font-bold">--</span></div><div class="text-[11px] mono">P&L: <span id="totalPnL" class="font-bold text-[#00c087]">₹0</span></div></div>
+<div class="flex-1 p-2"><canvas id="chart" class="w-full h-full bg-[#151a21] rounded-xl"></canvas></div>
+<div class="h-[160px] bg-[#151a21] border-t border-[#1f2633] p-2 overflow-auto"><div id="positionsTable"></div></div>
 </main>
-
-<aside class="w-[310px] bg-[#151a21] border-l border-[#1f2633] flex flex-col p-4 shrink-0">
-<div class="flex bg-[#0b0e11] rounded-lg p-1 mb-4"><button id="buyTab" class="flex-1 py-2 rounded-md bg-[#00c087] text-black font-bold text-[13px]">BUY</button><button id="sellTab" class="flex-1 py-2 rounded-md text-[#8b8f9a] text-[13px]">SELL</button></div>
-<div class="space-y-4">
-<div><label class="text-[11px] text-[#8b8f9a]">Quantity</label><div class="flex items-center bg-[#0b0e11] border border-[#2a3241] rounded-lg mt-1"><button onclick="adjQty(-1)" class="px-3 py-2 text-[#8b8f9a]">-</button><input id="qty" type="number" value="1" class="flex-1 bg-transparent text-center mono text-[14px] focus:outline-none"><button onclick="adjQty(1)" class="px-3 py-2 text-[#8b8f9a]">+</button></div><div id="holdingInfo" class="text-[10px] text-[#00c087] mt-1 hidden"></div></div>
-<div><label class="text-[11px] text-[#8b8f9a]">Price Type</label><select id="orderType" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg mt-1 px-3 py-2.5 text-[13px]"><option>Market Price (LIVE NSE)</option><option>Limit Price</option></select></div>
-<div><label class="text-[11px] text-[#8b8f9a]">LTP - Live Price (₹)</label><input id="priceInput" class="w-full bg-[#0b0e11] border border-[#2a3241] rounded-lg mt-1 px-3 py-2.5 mono text-[14px]" readonly></div>
-<div class="bg-[#1e252f] rounded-lg p-3 text-[11px] space-y-1.5"><div class="flex justify-between"><span class="text-[#8b8f9a]">Required</span><span id="reqMargin" class="mono">--</span></div><div class="flex justify-between"><span class="text-[#8b8f9a]">Available after</span><span id="availAfter" class="mono">--</span></div></div>
-<button id="placeOrder" class="w-full py-3 rounded-lg bg-[#00c087] text-black font-bold text-[14px] hover:bg-[#00d495] transition">BUY RELIANCE</button>
-<p class="text-[10px] text-[#5a5f6d] text-center">⚡ Real NSE Data via Yahoo Finance | Paper Trading</p>
-</div>
+<aside class="w-full md:w-[300px] bg-[#151a21] border-l border-[#1f2633] p-3">
+<div class="flex bg-[#0b0e11] rounded-lg p-1 mb-3"><button id="buyTab" class="flex-1 py-2.5 rounded bg-[#00c087] text-black font-bold text-[13px]">BUY</button><button id="sellTab" class="flex-1 py-2.5 rounded text-[#8b8f9a] text-[13px]">SELL</button></div>
+<div class="flex bg-[#0b0e11] border border-[#2a3241] rounded-lg mb-3"><button onclick="adjQty(-1)" class="px-4 py-3">-</button><input id="qty" value="1" class="flex-1 bg-transparent text-center mono"><button onclick="adjQty(1)" class="px-4 py-3">+</button></div>
+<div class="bg-[#1e252f] p-2 rounded text-[11px] mb-3"><div class="flex justify-between"><span>Price</span><span id="priceBox" class="mono">--</span></div><div class="flex justify-between"><span>Required</span><span id="reqMargin" class="mono">--</span></div></div>
+<button id="placeOrder" class="w-full py-3 rounded-xl bg-[#00c087] text-black font-bold">BUY</button>
+<div id="syncStatus" class="text-[10px] text-[#8b8f9a] mt-2 text-center">● Cloud Sync: Ready</div>
 </aside>
 </div>
-
 <script>
-const stocks=[
-{n:'RELIANCE',full:'RELIANCE INDUSTRIES',price:2988.34,change:1.24,yahoo:'RELIANCE'},
-{n:'TCS',full:'TATA CONSULTANCY',price:4179.37,change:-0.45,yahoo:'TCS'},
-{n:'INFY',full:'INFOSYS LTD',price:1789.59,change:0.82,yahoo:'INFY'},
-{n:'HDFCBANK',full:'HDFC BANK',price:1705.10,change:0.15,yahoo:'HDFCBANK'},
-{n:'ICICIBANK',full:'ICICI BANK',price:1211.71,change:-0.32,yahoo:'ICICIBANK'},
-{n:'SBIN',full:'STATE BANK OF INDIA',price:867.24,change:2.10,yahoo:'SBIN'},
-{n:'BHARTIARTL',full:'BHARTI AIRTEL',price:1523.43,change:0.95,yahoo:'BHARTIARTL'},
-{n:'ITC',full:'ITC LTD',price:489.83,change:-0.12,yahoo:'ITC'},
-{n:'LT',full:'LARSEN & TOUBRO',price:3520.8,change:1.55,yahoo:'LT'},
-{n:'BAJFINANCE',full:'BAJAJ FINANCE',price:6950.0,change:-1.20,yahoo:'BAJFINANCE'},
-{n:'WIPRO',full:'WIPRO LTD',price:510.3,change:0.44,yahoo:'WIPRO'},
-{n:'MARUTI',full:'MARUTI SUZUKI',price:12200.5,change:0.78,yahoo:'MARUTI'},
-{n:'TATAMOTORS',full:'TATA MOTORS',price:1080.6,change:-0.90,yahoo:'TATAMOTORS'},
-{n:'AXISBANK',full:'AXIS BANK',price:1165.2,change:0.33,yahoo:'AXISBANK'},
-{n:'NTPC',full:'NTPC LTD',price:380.2,change:0.25,yahoo:'NTPC'},
-{n:'POWERGRID',full:'POWER GRID',price:320.5,change:0.40,yahoo:'POWERGRID'}
-];
-let selected=stocks[0], balance=1000000, holdings=JSON.parse(localStorage.getItem('ts_holdings')||'{}'), orders=JSON.parse(localStorage.getItem('ts_orders')||'[]'), chartData=[], isBuy=true, tf='1D', realMode=false;
-
-async function fetchRealPrice(yahooSym){
-  try{
-    const url=`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}.NS?interval=1m&range=1d`;
-    const proxy=`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const res=await fetch(proxy);
-    if(!res.ok) throw new Error('proxy fail');
-    const data=await res.json();
-    const meta=data.chart.result[0].meta;
-    const price=meta.regularMarketPrice;
-    const prev=meta.previousClose;
-    const change=((price-prev)/prev*100);
-    return {price, change, prev};
-  }catch(e){
-    return null;
+const BACKEND = 'https://dhan-bot-backend.onrender.com';
+const SUPABASE_URL = 'https://dgtcjgemvddkkzikyrfb.supabase.co';
+// YAHAN APNI ANON KEY (eyJ se start wali chhoti wali) DALO
+const SUPABASE_KEY =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndGNqZ2VtdmRka2t6aWt5cmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNTMwNDMsImV4cCI6MjEwNDYyOTA0M30.FrLHJZ_1Q353wVD9XiGJ9T93CuU_3m3ox4wray5KPi0
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let user=null, stocks=[], selected=null, balance=1000000, holdings={}, orders=[], isBuy=true;
+async function checkUser(){
+  const { data } = await supabaseClient.auth.getSession();
+  if(data.session){ user=data.session.user; showApp(); } else { document.getElementById('loginScreen').classList.remove('hidden'); }
+}
+document.getElementById('loginBtn').onclick = async ()=>{
+  const email=document.getElementById('email').value, password=document.getElementById('password').value;
+  if(!email || password.length<6){ document.getElementById('loginMsg').innerText='Email + 6 digit password dalo'; return; }
+  document.getElementById('loginMsg').innerText='Loading...';
+  let { data, error } = await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){
+    const { data: sData, error: sError } = await supabaseClient.auth.signUp({email,password});
+    if(sError){ document.getElementById('loginMsg').innerText=sError.message; return; }
+    data=sData;
   }
-}
-async function fetchIndices(){
-  try{
-    const syms=['^NSEI','^BSESN','^NSEBANK'];
-    const ids=['nifty','sensex','bank'];
-    const chIds=['niftyCh','sensexCh','bankCh'];
-    for(let i=0;i<syms.length;i++){
-      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${syms[i]}?interval=1m&range=1d`;
-      const proxy=`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const res=await fetch(proxy);
-      const data=await res.json();
-      const meta=data.chart.result[0].meta;
-      const price=meta.regularMarketPrice;
-      const prev=meta.previousClose;
-      const ch=((price-prev)/prev*100).toFixed(2);
-      document.getElementById(ids[i]).innerText=price.toLocaleString('en-IN',{minimumFractionDigits:2});
-      const el=document.getElementById(chIds[i]);
-      el.innerText=(ch>=0?'+':'')+ch+'%';
-      el.className=(ch>=0?'text-[#00c087] ml-1':'text-[#ff4458] ml-1');
-    }
-    document.getElementById('liveDot').innerText='● LIVE NSE';
-    document.getElementById('liveDot').className='ml-2 text-[10px] text-[#00c087]';
-    document.getElementById('apiStatus').innerText='LIVE';
-    document.getElementById('apiStatus').className='absolute right-2 top-2 text-[9px] bg-[#00c087]/20 text-[#00c087] px-1.5 py-0.5 rounded';
-    realMode=true;
-  }catch(e){
-    document.getElementById('liveDot').innerText='● SIMULATION';
-    document.getElementById('liveDot').className='ml-2 text-[10px] text-[#ffaa00]';
-  }
-}
-async function updateAllRealPrices(){
-  for(let s of stocks){
-    const real=await fetchRealPrice(s.yahoo);
-    if(real){
-      const old=s.price;
-      s.price=real.price;
-      s.change=real.change;
-      const row=document.getElementById('row-'+s.n);
-      if(row){
-        row.classList.remove('flash-green','flash-red'); void row.offsetWidth;
-        row.classList.add(real.price>old?'flash-green':'flash-red');
-      }
-      if(s.n===selected.n){
-        document.getElementById('selectedPrice').innerText='₹'+s.price.toFixed(2);
-        document.getElementById('priceInput').value=s.price.toFixed(2);
-        document.getElementById('selectedChange').innerText=(s.change>=0?'+':'')+s.change.toFixed(2)+'%';
-        document.getElementById('selectedChange').className='text-[13px] px-2 py-0.5 rounded '+(s.change>=0?'bg-[#00c087]/15 text-[#00c087]':'bg-[#ff4458]/15 text-[#ff4458]');
-        updateReqMargin();
-      }
-    }
-  }
-  renderWatchlist(document.getElementById('search').value);
-  updatePnL();
-}
-
-function init(){
-  if(Object.keys(holdings).length>0){ balance = parseFloat(localStorage.getItem('ts_balance')||'1000000'); }
-  genChart(); renderWatchlist(); updateUI(); fetchIndices(); 
-  setInterval(()=>{ if(realMode) updateAllRealPrices(); else simulate(); },3000);
-  setInterval(updateChart,1500);
-  setInterval(fetchIndices,30000);
-}
-function renderWatchlist(filter=''){
-  const el=document.getElementById('watchlist');
-  el.innerHTML=stocks.filter(s=>s.n.includes(filter.toUpperCase())||s.full.includes(filter.toUpperCase())).map(s=>{
-    const col=s.change>=0?'text-[#00c087]':'text-[#ff4458]';
-    const bg=s.change>=0?'bg-[#00c087]/10':'bg-[#ff4458]/10';
-    const isSelected=selected.n===s.n?'bg-[#1e252f] border-l-2 border-l-[#00c087]':'';
-    return `<div onclick="selectStock('${s.n}')" id="row-${s.n}" class="flex items-center justify-between px-3 py-[9px] hover:bg-[#1e252f] cursor-pointer border-b border-[#1f2633]/50 ${isSelected}">
-      <div><div class="text-[12px] font-semibold">${s.n}</div><div class="text-[10px] text-[#6b7280]">${s.full.slice(0,20)}</div></div>
-      <div class="text-right"><div class="mono text-[12px]">${s.price.toFixed(2)}</div><div class="text-[10px] ${col} ${bg} px-1.5 py-0.5 rounded inline-block">${s.change>=0?'+':''}${s.change.toFixed(2)}%</div></div>
-    </div>`;
-  }).join('');
-}
-function selectStock(sym){
-  selected=stocks.find(s=>s.n===sym);
-  const holding=holdings[sym];
-  // AUTO SWITCH TO SELL IF HOLDING EXISTS - FIX FOR YOUR ISSUE
-  if(holding && holding.qty>0){
-    isBuy=false;
-    document.getElementById('buyTab').className='flex-1 py-2 rounded-md text-[#8b8f9a] text-[13px]';
-    document.getElementById('sellTab').className='flex-1 py-2 rounded-md bg-[#ff4458] text-white font-bold text-[13px]';
-    document.getElementById('placeOrder').className='w-full py-3 rounded-lg bg-[#ff4458] text-white font-bold text-[14px]';
-    document.getElementById('holdingInfo').classList.remove('hidden');
-    document.getElementById('holdingInfo').innerText=`Holding: ${holding.qty} shares @ ₹${holding.avg.toFixed(2)} - SELL available`;
-  } else {
-    isBuy=true;
-    document.getElementById('buyTab').className='flex-1 py-2 rounded-md bg-[#00c087] text-black font-bold text-[13px]';
-    document.getElementById('sellTab').className='flex-1 py-2 rounded-md text-[#8b8f9a] text-[13px]';
-    document.getElementById('placeOrder').className='w-full py-3 rounded-lg bg-[#00c087] text-black font-bold text-[14px]';
-    document.getElementById('holdingInfo').classList.add('hidden');
-  }
-  document.getElementById('selectedName').innerText=selected.full;
-  document.getElementById('selectedSym').innerText=selected.n+' - NSE';
-  document.getElementById('selectedPrice').innerText='₹'+selected.price.toFixed(2);
-  document.getElementById('priceInput').value=selected.price.toFixed(2);
-  document.getElementById('selectedChange').innerText=(selected.change>=0?'+':'')+selected.change.toFixed(2)+'%';
-  document.getElementById('selectedChange').className='text-[13px] px-2 py-0.5 rounded '+(selected.change>=0?'bg-[#00c087]/15 text-[#00c087]':'bg-[#ff4458]/15 text-[#ff4458]');
-  document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+selected.n;
-  updateReqMargin();
-  genChart(); renderWatchlist(document.getElementById('search').value);
-}
-function simulate(){
-  stocks.forEach(s=>{
-    const old=s.price;
-    s.price=Math.max(10,s.price+(Math.random()-0.48)*s.price*0.006);
-    s.change+=(Math.random()-0.5)*0.08;
-    const row=document.getElementById('row-'+s.n);
-    if(row && Math.abs(s.price-old)>0.01){
-      row.classList.remove('flash-green','flash-red'); void row.offsetWidth;
-      row.classList.add(s.price>old?'flash-green':'flash-red');
-      row.querySelector('.mono').innerText=s.price.toFixed(2);
-    }
-    if(s.n===selected.n){
-      document.getElementById('selectedPrice').innerText='₹'+s.price.toFixed(2);
-      document.getElementById('priceInput').value=s.price.toFixed(2);
-      updateReqMargin();
-    }
-  });
-  renderWatchlist(document.getElementById('search').value);
-  updatePnL();
-  renderDepth();
-}
-function genChart(){chartData=[];let p=selected.price*0.98;for(let i=0;i<80;i++){p+=(Math.random()-0.48)*selected.price*0.01;chartData.push({o:p,c:p+(Math.random()-0.5)*10,h:p+Math.random()*8,l:p-Math.random()*8});}drawChart();}
-function updateChart(){let last=chartData[chartData.length-1];let np=selected.price+(Math.random()-0.5)*4;chartData.shift();chartData.push({o:last.c,c:np,h:Math.max(last.c,np)+Math.random()*3,l:Math.min(last.c,np)-Math.random()*3});drawChart();}
-function drawChart(){const canvas=document.getElementById('chart');const ctx=canvas.getContext('2d');const rect=canvas.getBoundingClientRect();canvas.width=rect.width*2;canvas.height=rect.height*2;ctx.scale(2,2);const W=rect.width,H=rect.height;ctx.clearRect(0,0,W,H);const vals=chartData.flatMap(d=>[d.h,d.l]);const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1,bw=W/chartData.length*0.6;chartData.forEach((d,i)=>{const x=i*(W/chartData.length)+4;const yO=H-((d.o-min)/range)*(H-40)-20,yC=H-((d.c-min)/range)*(H-40)-20,yH=H-((d.h-min)/range)*(H-40)-20,yL=H-((d.l-min)/range)*(H-40)-20;const up=d.c>=d.o;ctx.strokeStyle=up?'#00c087':'#ff4458';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+bw/2,yH);ctx.lineTo(x+bw/2,yL);ctx.stroke();ctx.fillStyle=up?'#00c087':'#ff4458';ctx.fillRect(x,Math.min(yO,yC),bw,Math.max(2,Math.abs(yO-yC)));});}
-function renderDepth(){const bids=[...Array(5)].map((_,i)=>({p:(selected.price-i*0.05-0.05).toFixed(2),q:Math.floor(Math.random()*500+50)})),asks=[...Array(5)].map((_,i)=>({p:(selected.price+i*0.05+0.05).toFixed(2),q:Math.floor(Math.random()*500+50)}));document.getElementById('depth').innerHTML=`<div class="text-[10px] text-[#8b8f9a] mb-1">MARKET DEPTH</div>`+asks.reverse().map(a=>`<div class="flex justify-between text-[#ff4458]"><span>${a.p}</span><span>${a.q}</span></div>`).join('')+`<div class="border-t border-[#2a3241] my-1"></div>`+bids.map(b=>`<div class="flex justify-between text-[#00c087]"><span>${b.p}</span><span>${b.q}</span></div>`).join('');}
-function adjQty(d){const e=document.getElementById('qty');e.value=Math.max(1,parseInt(e.value||1)+d);updateReqMargin();}
-function updateReqMargin(){const qty=parseInt(document.getElementById('qty').value)||1;const req=selected.price*qty;document.getElementById('reqMargin').innerText='₹'+req.toFixed(2);document.getElementById('availAfter').innerText=isBuy?'₹'+(balance-req).toFixed(2):'₹'+(balance+req).toFixed(2);}
-document.getElementById('search').addEventListener('input',e=>renderWatchlist(e.target.value));
-document.getElementById('qty').addEventListener('input',updateReqMargin);
-document.getElementById('buyTab').onclick=function(){isBuy=true;this.className='flex-1 py-2 rounded-md bg-[#00c087] text-black font-bold text-[13px]';document.getElementById('sellTab').className='flex-1 py-2 rounded-md text-[#8b8f9a] text-[13px]';document.getElementById('placeOrder').className='w-full py-3 rounded-lg bg-[#00c087] text-black font-bold text-[14px]';document.getElementById('placeOrder').innerText='BUY '+selected.n;updateReqMargin();};
-document.getElementById('sellTab').onclick=function(){isBuy=false;this.className='flex-1 py-2 rounded-md bg-[#ff4458] text-white font-bold text-[13px]';document.getElementById('buyTab').className='flex-1 py-2 rounded-md text-[#8b8f9a] text-[13px]';document.getElementById('placeOrder').className='w-full py-3 rounded-lg bg-[#ff4458] text-white font-bold text-[14px]';document.getElementById('placeOrder').innerText='SELL '+selected.n;updateReqMargin();};
-document.getElementById('placeOrder').onclick=function(){
-  const qty=parseInt(document.getElementById('qty').value)||1;
-  const price=selected.price;
-  const cost=qty*price;
-  if(isBuy){
-    if(cost>balance){alert('Balance kam hai! Qty kam karo. Available: ₹'+balance.toFixed(2));return;}
-    balance-=cost;
-    holdings[selected.n]=holdings[selected.n]||{qty:0,avg:0};
-    const h=holdings[selected.n];
-    h.avg=(h.avg*h.qty+cost)/(h.qty+qty);
-    h.qty+=qty;
-  } else {
-    const h=holdings[selected.n];
-    if(!h||h.qty<qty){alert('Is stock ki holding nahi hai! Pehle BUY karo.');return;}
-    balance+=cost;
-    h.qty-=qty;
-    if(h.qty===0) delete holdings[selected.n];
-  }
-  orders.unshift({sym:selected.n,qty,price,type:isBuy?'BUY':'SELL',time:new Date().toLocaleTimeString(),date:new Date().toLocaleDateString()});
-  localStorage.setItem('ts_holdings',JSON.stringify(holdings));
-  localStorage.setItem('ts_orders',JSON.stringify(orders));
-  localStorage.setItem('ts_balance',balance.toString());
-  updateUI();
-  if(!isBuy && (!holdings[selected.n]||holdings[selected.n].qty===0)){ document.getElementById('buyTab').click(); }
+  user=data.user || data.session?.user;
+  if(user) showApp();
 };
-function quickSell(sym){
+document.getElementById('logoutBtn').onclick = async ()=>{ await supabaseClient.auth.signOut(); location.reload(); };
+async function showApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('userEmail').innerText=user.email;
+  await loadPortfolio();
+  await loadNifty50();
+}
+async function loadPortfolio(){
+  document.getElementById('syncStatus').innerText='● Cloud Sync: Loading...';
+  try{
+    const { data, error } = await supabaseClient.from('portfolios').select('*').eq('user_id', user.id).single();
+    if(data){
+      balance = parseFloat(data.balance) || 1000000;
+      holdings = data.holdings || {};
+      orders = data.orders || [];
+      document.getElementById('syncStatus').innerText='● Cloud Sync: Loaded ☁️ '+new Date().toLocaleTimeString();
+    } else {
+      await supabaseClient.from('portfolios').insert({user_id: user.id, balance: 1000000, holdings: {}, orders: []});
+      document.getElementById('syncStatus').innerText='● Cloud Sync: New Account Created ☁️';
+    }
+    updateUI();
+  }catch(e){
+    console.log(e);
+    document.getElementById('syncStatus').innerText='● Cloud Sync: Offline';
+  }
+}
+async function savePortfolio(){
+  document.getElementById('syncStatus').innerText='● Cloud Sync: Saving...';
+  try{
+    const { error } = await supabaseClient.from('portfolios').upsert({user_id: user.id, balance, holdings, orders, updated_at: new Date().toISOString()}, {onConflict: 'user_id'});
+    if(error) throw error;
+    document.getElementById('syncStatus').innerText='● Cloud Sync: Saved ☁️ '+new Date().toLocaleTimeString();
+  }catch(e){ document.getElementById('syncStatus').innerText='● Save failed: '+e.message; }
+}
+async function loadNifty50(){
+  try{
+    const res=await fetch(BACKEND+'/api/nifty50'); const data=await res.json();
+    stocks=data.data.map(d=>({n:d.symbol,full:d.meta?.companyName||d.symbol,price:d.lastPrice,change:d.pChange}));
+    renderWatchlist(); if(stocks.length>0) selectStock(stocks[0].n);
+  }catch(e){ stocks=[{n:'RELIANCE',full:'Reliance',price:1274,change:0.5},{n:'TCS',full:'TCS',price:4150,change:-0.2},{n:'INFY',full:'Infosys',price:1620,change:0.8}]; renderWatchlist(); selectStock(stocks[0].n); }
+}
+function renderWatchlist(q=''){
+  const filtered=stocks.filter(s=>!q||s.n.includes(q.toUpperCase()));
+  document.getElementById('stockCount').innerText=filtered.length;
+  document.getElementById('watchlist').innerHTML=filtered.slice(0,80).map(s=>`<div onclick="selectStock('${s.n}')" class="flex justify-between px-3 py-2.5 border-b border-[#1f2633]/40 hover:bg-[#1e252f] cursor-pointer"><div><div class="text-[12px] font-bold">${s.n}</div><div class="text-[10px] text-[#6b7280]">${s.full.slice(0,20)}</div></div><div class="text-right"><div class="mono text-[12px]">₹${s.price.toFixed(2)}</div><div class="text-[10px] ${s.change>=0?'text-[#00c087]':'text-[#ff4458]'}">${s.change.toFixed(2)}%</div></div></div>`).join('');
+}
+async function selectStock(sym){
   selected=stocks.find(s=>s.n===sym);
-  selectStock(sym);
-  document.getElementById('sellTab').click();
-  document.getElementById('qty').value=holdings[sym].qty;
-  updateReqMargin();
-  window.scrollTo(0,0);
+  if(!selected) return;
+  document.getElementById('selectedName').innerText=selected.full;
+  document.getElementById('selectedSym').innerText=selected.n;
+  document.getElementById('selectedPrice').innerText='₹'+selected.price.toFixed(2);
+  document.getElementById('priceBox').innerText='₹'+selected.price.toFixed(2);
+  document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+selected.n;
+  updateReq();
 }
+function adjQty(d){const e=document.getElementById('qty'); e.value=Math.max(1,parseInt(e.value||1)+d); updateReq();}
+function updateReq(){ const qty=parseInt(document.getElementById('qty').value)||1; document.getElementById('reqMargin').innerText='₹'+((selected?.price||0)*qty).toFixed(2); }
+document.getElementById('search').addEventListener('input',e=>renderWatchlist(e.target.value));
+document.getElementById('buyTab').onclick=function(){isBuy=true; this.className='flex-1 py-2.5 rounded bg-[#00c087] text-black font-bold text-[13px]'; document.getElementById('sellTab').className='flex-1 py-2.5 rounded text-[#8b8f9a] text-[13px]'; document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+(selected?.n||''); document.getElementById('placeOrder').className='w-full py-3 rounded-xl bg-[#00c087] text-black font-bold';};
+document.getElementById('sellTab').onclick=function(){isBuy=false; this.className='flex-1 py-2.5 rounded bg-[#ff4458] text-white font-bold text-[13px]'; document.getElementById('buyTab').className='flex-1 py-2.5 rounded text-[#8b8f9a] text-[13px]'; document.getElementById('placeOrder').innerText=(isBuy?'BUY ':'SELL ')+(selected?.n||''); document.getElementById('placeOrder').className='w-full py-3 rounded-xl bg-[#ff4458] text-white font-bold';};
+document.getElementById('placeOrder').onclick=async function(){
+  if(!selected) return;
+  const qty=parseInt(document.getElementById('qty').value)||1; const price=selected.price; const cost=qty*price;
+  if(isBuy){ if(cost>balance){alert('Balance kam hai');return;} balance-=cost; holdings[selected.n]=holdings[selected.n]||{qty:0,avg:0}; const h=holdings[selected.n]; h.avg=(h.avg*h.qty+cost)/(h.qty+qty); h.qty+=qty; }
+  else{ const h=holdings[selected.n]; if(!h||h.qty<qty){alert('Holding nahi hai');return;} balance+=cost; h.qty-=qty; if(h.qty===0) delete holdings[selected.n]; }
+  orders.unshift({sym:selected.n,qty,price,type:isBuy?'BUY':'SELL',time:new Date().toLocaleTimeString()});
+  updateUI(); await savePortfolio();
+};
 function updateUI(){
-  document.getElementById('balanceDisplay').innerText='₹'+balance.toLocaleString('en-IN',{minimumFractionDigits:2});
-  document.getElementById('posCount').innerText=Object.keys(holdings).length;
-  document.getElementById('orderCount').innerText=orders.length;
-  let html='',inv=0,cval=0;
+  document.getElementById('balanceDisplay').innerText='₹'+balance.toLocaleString('en-IN',{maximumFractionDigits:0});
+  let inv=0,cval=0, html='';
   Object.entries(holdings).forEach(([sym,h])=>{
-    const live=stocks.find(s=>s.n===sym)?.price||h.avg;
-    const cur=live*h.qty;
-    const invested=h.avg*h.qty;
-    inv+=invested; cval+=cur;
-    const pnl=cur-invested;
-    const pnlP=(pnl/invested*100).toFixed(2);
-    html+=`<div class="flex items-center justify-between bg-[#1e252f] px-3 py-2.5 rounded-lg mb-1.5 text-[12px]"><div><b class="text-[13px]">${sym}</b> <span class="text-[#8b8f9a] text-[11px]">${h.qty} shares @ ₹${h.avg.toFixed(2)}</span></div><div class="flex items-center gap-3"><div class="text-right"><div class="mono">₹${cur.toFixed(2)}</div><div class="${pnl>=0?'text-[#00c087]':'text-[#ff4458]'} mono text-[11px]">${pnl>=0?'+':''}₹${pnl.toFixed(2)} (${pnlP}%)</div></div><button onclick="quickSell('${sym}')" class="bg-[#ff4458] hover:bg-[#ff2a43] text-white px-3 py-1.5 rounded text-[11px] font-bold">SELL</button></div></div>`;
+    const live=stocks.find(s=>s.n===sym)?.price||h.avg; const cur=live*h.qty; const invd=h.avg*h.qty; inv+=invd; cval+=cur;
+    html+=`<div class="flex justify-between bg-[#1e252f] p-2 rounded text-[12px] mb-1"><div><b>${sym}</b> ${h.qty} @ ₹${h.avg.toFixed(2)}</div><div class="text-[#00c087]">₹${(cur-invd).toFixed(2)}</div></div>`;
   });
-  document.getElementById('positionsTable').innerHTML=html||'<div class="text-center text-[#5a5f6d] text-[12px] mt-6">Koi position nahi - pehla trade karo! Left se stock select karo.</div>';
-  document.getElementById('totalInv').innerText='₹'+inv.toFixed(2);
-  document.getElementById('currVal').innerText='₹'+cval.toFixed(2);
-  const totalPnL=cval-inv;
-  document.getElementById('totalPnL').innerText=(totalPnL>=0?'+':'')+'₹'+totalPnL.toFixed(2);
-  document.getElementById('totalPnL').className='mono text-[14px] font-bold mt-1 '+(totalPnL>=0?'text-[#00c087]':'text-[#ff4458]');
-  document.getElementById('orders').innerHTML=orders.map(o=>`<div class="flex justify-between border-b border-[#1f2633] py-2.5"><span class="${o.type==='BUY'?'text-[#00c087]':'text-[#ff4458]'} font-bold">${o.type} ${o.sym} x${o.qty}</span><span>₹${o.price.toFixed(2)}</span><span class="text-[#8b8f9a]">${o.time}</span></div>`).join('')||'<div class="text-[#5a5f6d] text-center mt-6">No orders yet</div>';
+  document.getElementById('positionsTable').innerHTML=html||'<div class="text-center text-[#5a5f6d] text-[12px]">No positions - Buy karo, cloud pe save hoga</div>';
+  document.getElementById('totalPnL').innerText='₹'+(cval-inv).toFixed(2);
 }
-function updatePnL(){ updateUI(); }
-function setTF(t){ tf=t; document.querySelectorAll('.tf').forEach(b=>{b.className='tf px-3 py-1 rounded text-[11px] text-[#8b8f9a]'; if(b.innerText===t) b.className='tf bg-[#2a3241] text-white px-3 py-1 rounded text-[11px]'}); genChart(); }
-document.querySelectorAll('.tab').forEach(b=>b.onclick=function(){
-  document.querySelectorAll('.tab').forEach(x=>x.className='tab text-[#8b8f9a] h-full');
-  this.className='tab active text-white border-b-2 border-[#00c087] h-full';
-  document.getElementById('positions').classList.toggle('hidden',this.dataset.tab!=='positions');
-  document.getElementById('orders').classList.toggle('hidden',this.dataset.tab!=='orders');
-});
-init();
-updateReqMargin();
+checkUser();
 </script>
 </body>
 </html>
